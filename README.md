@@ -1,0 +1,1 @@
+This is a simple app that will help you easily add Vega Absolute devices to IOT Vega Server by QR codes
