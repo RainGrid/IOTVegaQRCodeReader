@@ -74,6 +74,12 @@ export default class Main extends React.Component {
             lines.forEach(line => {
                 var parts = line.split('=');
                 if (parts.length > 1) {
+                    parts[0] = parts[0].replace('DevEui', 'devEui');
+                    parts[0] = parts[0].replace('DevAdd', 'devAddress');
+                    parts[0] = parts[0].replace('NwkSKey', 'nwksKey');
+                    parts[0] = parts[0].replace('AppSKey', 'appsKey');
+                    parts[0] = parts[0].replace('AppEui', 'appEui');
+                    parts[0] = parts[0].replace('AppKey', 'appKey');
                     keys[parts[0]] = parts[1];
                 }
             });
