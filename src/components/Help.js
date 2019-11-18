@@ -8,8 +8,9 @@ export default class Help extends React.Component {
             <p>This is a simple app that will help you easily add Vega Absolute devices to IOT Vega Server by QR codes</p>
             <p>How to use:</p>
             <ol>
-                <li>Enter your login, password and IOT Server address in config.js</li>
+                <li>Enter IOT Server address in config.js</li>
                 <li>Start the app</li>
+                <li>Log in</li>
                 <li>Allow the app to access your webcam</li>
                 <li>If there are no errors, scan the QR code, enter a new device name and press Save</li>
                 <li>Press Reset to skip the device or add a new one</li>

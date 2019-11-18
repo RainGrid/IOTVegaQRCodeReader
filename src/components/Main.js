@@ -1,12 +1,9 @@
 import React from 'react';
-import Websocket from 'react-websocket';
+import { connect } from 'react-redux';
 import QrReader from 'react-qr-reader';
+import { socket, sendRequest as wsSendRequest } from '../ws/index';
 
-export default class Main extends React.Component {
-
-    login = window.vega_login || ''
-    password = window.vega_password || ''
-    server_url = window.vega_server_url || ''
+class Main extends React.Component {
 
     initState = {
         error: null,
@@ -19,52 +16,34 @@ export default class Main extends React.Component {
     state = { ...this.initState }
 
     componentWillUnmount() {
-        this.wsRef = null;
+        socket.on('manage_devices_resp', null);
     }
 
-    handleWSData = (data) => {
-        try {
-            var response = JSON.parse(data);
-            if (response.cmd === 'auth_resp') {
-                if (!response.status) {
-                    this.setState({ error: 'Authentification failed: ' + response.err_string });
-                }
-            }
-            if (response.cmd === 'manage_devices_resp') {
-                if (!response.status) {
-                    this.setState({ error: 'Save error: ' + response.err_string });
-                } else {
-                    if (response.device_add_status) {
-                        var curDevice = response.device_add_status.find(el => el.devEui === this.state.device.devEui);
-                        if (curDevice) {
-                            if (curDevice.status === 'added'
-                                || curDevice.status === 'updated'
-                                || curDevice.status === 'nothingToUpdate'
-                                || curDevice.status === 'updateViaMacBuffer') {
-                                this.setState({ ...this.initState, success: true });
-                            } else {
-                                this.setState({ error: 'Save error: ' + curDevice.status });
-                            }
-                        } else {
-                            this.setState({ error: 'The device is not found in the results' });
-                        }
+    componentDidMount() {
+        socket.on('manage_devices_resp', this.handleManageDevicesResp);
+    }
+
+    handleManageDevicesResp = (response) => {
+        if (!response.status) {
+            this.setState({ error: 'Save error: ' + response.err_string });
+        } else {
+            if (response.device_add_status) {
+                var curDevice = response.device_add_status.find(el => el.devEui === this.state.device.devEui);
+                if (curDevice) {
+                    if (curDevice.status === 'added'
+                        || curDevice.status === 'updated'
+                        || curDevice.status === 'nothingToUpdate'
+                        || curDevice.status === 'updateViaMacBuffer') {
+                        this.setState({ ...this.initState, success: true });
+                    } else {
+                        this.setState({ error: 'Save error: ' + curDevice.status });
                     }
+                } else {
+                    this.setState({ error: 'The device is not found in the results' });
                 }
-                this.setState({ saving: false });
             }
-        } catch (error) {
-            this.setState({ error: error.message });
         }
-    }
-
-    handleWSOpen = () => {
-        if(!this.wsRef) return;
-        this.setState({ connected: true, error: null }, this.auth());
-    }
-
-    handleWSError = () => {
-        if(!this.wsRef) return;
-        this.setState({ connected: false, error: 'Connection error' });
+        this.setState({ saving: false });
     }
 
     handleQRScan = (data) => {
@@ -138,35 +117,14 @@ export default class Main extends React.Component {
         }
     }
 
-    auth = () => {
-        var request = {
-            cmd: 'auth_req',
-            login: this.login,
-            password: this.password
-        };
-        this.sendRequest(request);
-    }
-
     sendRequest = (request) => {
-        try {
-            var message = JSON.stringify(request);
-            if (this.wsRef) {
-                this.wsRef.sendMessage(message);
-            }
-        } catch (error) {
-            this.setState({ error: error.message });
-        }
+        wsSendRequest(request);
     }
 
     render() {
         return <div className="main">
-            <Websocket url={this.server_url}
-                ref={WS => this.wsRef = WS}
-                onOpen={this.handleWSOpen}
-                onClose={this.handleWSError}
-                onMessage={this.handleWSData} />
             <h1>Home</h1>
-            <div className="mb-2">{this.state.connected ? 'Connected to the server' : 'Disconnected from the server'}</div>
+            <div className="mb-2">{this.props.ws.connected ? 'Connected to the server' : 'Disconnected from the server'}</div>
             <div className="row">
                 <div className="col-md-6">
                     <div className="qr-reader mb-4">
@@ -195,7 +153,7 @@ export default class Main extends React.Component {
                         </div>
                         <form className="device-form mb-4" onSubmit={this.handleFormSubmit}>
                             <div className="form-group">
-                                <input type="text" name="devName" className="form-control" placeholder="Enter a device name" onChange={this.handleInputChange} value={this.state.devName || ''} readOnly={this.state.saving} />
+                                <input type="text" name="devName" className="form-control" placeholder="Enter a device name" onChange={this.handleInputChange} value={this.state.devName || ''} readOnly={this.state.saving} required/>
                             </div>
                             <button type="submit" className="btn btn-primary mr-2 mb-2" disabled={!this.state.devName || this.state.saving}>Save</button>
                             <button type="button" className="btn btn-danger mr-2 mb-2" disabled={!this.state.device || this.state.saving} onClick={this.handleReset}>Reset</button>
@@ -207,3 +165,13 @@ export default class Main extends React.Component {
     }
 
 }
+
+const mapStateToProps = (store) => {
+    return {
+        ws: store.ws
+    };
+};
+
+export default connect(
+    mapStateToProps
+)(Main);
